@@ -193,7 +193,6 @@ function updateBacktest() {
   setMetric("strategyVolatility", volatility(rows, "strategyNorm"));
   $("spyVolatility").textContent = `SPY ${pct(volatility(rows, "spyNorm"))}`;
   setMetric("excessReturn", sr - pr);
-  $("returnBar").style.width = `${Math.min(100, Math.max(8, 50 + (sr - pr) * 2))}%`;
   drawChart(rows);
   const quarters = quarterRows(rows);
   $("quarterCount").textContent = `${quarters.length} quarters`;
@@ -225,11 +224,14 @@ function summaryPeriod(rows, prefix) {
 
 function renderSummary() {
   const daily = state.data.scenarios?.noTax_4_4 || state.data.daily;
-  const latestYear = Number(daily.at(-1).date.slice(0, 4));
+  const latestDate = new Date(`${daily.at(-1).date}T00:00:00Z`);
+  const oneYearStart = new Date(latestDate);
+  oneYearStart.setUTCFullYear(oneYearStart.getUTCFullYear() - 1);
+  const oneYearStartDate = oneYearStart.toISOString().slice(0, 10);
   summaryPeriod(daily.filter((row) => row.date >= "2005-01-01"), "summary2000");
   summaryPeriod(daily.filter((row) => row.date >= "2010-01-01"), "summary2010");
   summaryPeriod(daily.filter((row) => row.date >= "2020-01-01"), "summary2020");
-  summaryPeriod(daily.filter((row) => row.date >= `${latestYear}-01-01`), "summaryYtd");
+  summaryPeriod(daily.filter((row) => row.date >= oneYearStartDate), "summary1Year");
 }
 
 function scenarioKey() {

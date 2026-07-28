@@ -66,8 +66,6 @@ h2 { margin: 0; font-family: Georgia, serif; font-size: clamp(28px, 4vw, 42px); 
 .comparison small { display: block; margin-top: 8px; color: var(--muted); }
 .metric-card .comparison small { color: rgba(245,241,232,.78); }
 .primary .comparison small { color: rgba(245,241,232,.68); }
-.metric-bar { overflow: hidden; height: 3px; background: rgba(245,241,232,.14); }
-.metric-bar i { display: block; height: 100%; width: 50%; background: var(--lime); }
 .metric-card .positive { color: var(--cream); }
 .metric-card .negative { color: var(--tan); }
 .buy-list-card, .quarter-card, .chart-card { border: 1px solid var(--line); background: var(--card); padding: 30px; }
