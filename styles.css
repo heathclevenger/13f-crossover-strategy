@@ -179,10 +179,10 @@ select:focus, input:focus, button:focus-visible { outline: 3px solid rgba(197,13
 .tax-outcome { margin-top: 28px; padding-top: 20px; border-top: 2px solid var(--slate); }
 .tax-outcome > p { margin: 0 0 10px; color: var(--slate); font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
 .tax-outcome-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tax-outcome-grid article { padding: 16px; border: 1px solid var(--line); background: rgba(64,88,107,.06); }
+.tax-outcome-grid article { padding: 16px; border: 1px solid var(--slate); background: var(--slate); color: var(--cream); }
 .tax-outcome-grid span, .tax-outcome-grid small { display: block; }
-.tax-outcome-grid span { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.tax-outcome-grid strong { display: block; margin: 9px 0 5px; color: var(--slate); font: 500 22px Georgia, serif; }
+.tax-outcome-grid span { color: rgba(245,241,232,.68); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.tax-outcome-grid strong { display: block; margin: 9px 0 5px; color: var(--cream); font: 500 22px Georgia, serif; }
 .tax-outcome-grid small { color: var(--tan); font-size: 13px; font-weight: 800; }
 .tax-yearly-inline { margin-top: 30px; padding-top: 26px; border-top: 2px solid var(--slate); }
 .tax-yearly-inline h3 { margin: 0 0 6px; font: 500 25px Georgia, serif; }
