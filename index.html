@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="13F institutional crossover strategy dashboard and backtest.">
+  <title>13F Crossover Strategy</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="CORE Wealth Advisors home">
+      <span class="brand-core">CORE</span>
+      <span class="brand-advisors">Wealth<br>Advisors</span>
+    </a>
+    <div class="asof">
+      <span class="status-dot"></span>
+      <span id="asOfLabel">Loading data…</span>
+    </div>
+  </header>
+
+  <main>
+    <nav class="tabs" aria-label="Dashboard sections">
+      <button class="tab active" data-tab="summary">Overview</button>
+      <button class="tab" data-tab="current">Buy List</button>
+      <button class="tab" data-tab="backtest">Backtest</button>
+      <button class="tab" data-tab="holdings">Tax Summary</button>
+    </nav>
+
+    <section id="current" class="tab-panel">
+      <div class="section-heading tab-intro">
+        <div>
+          <p class="eyebrow">Quarterly institutional crossover</p>
+          <h2>Buy List</h2>
+          <p class="muted">Shows the stocks that rank within both the Top 25 by manager ownership and the Top 25 by aggregate reported value for the selected eligible 13F quarter.</p>
+        </div>
+      </div>
+      <div class="signal-dates">
+        <article>
+          <span>Last list update</span>
+          <strong id="lastListUpdate">—</strong>
+          <small id="lastListQuarter">Latest eligible 13F quarter</small>
+        </article>
+        <article>
+          <span>Next scheduled update <button class="info-button" data-info="13F signals become eligible 50 calendar days after each quarter ends.">i</button></span>
+          <strong id="nextListUpdate">—</strong>
+          <small>Next quarter-end plus 50 days</small>
+        </article>
+      </div>
+
+      <div class="buy-list-filters">
+        <label>
+          <span>Select year</span>
+          <select id="buyListYear"></select>
+        </label>
+        <label>
+          <span>Select quarter</span>
+          <select id="buyListQuarter"></select>
+        </label>
+      </div>
+
+      <div class="buy-list-card">
+        <div class="card-heading">
+          <div>
+            <p class="eyebrow">Current buy list</p>
+            <h2 id="buyListTitle">Crossover holdings</h2>
+          </div>
+          <div class="weight-pill"><span id="positionCount">—</span> positions · <span id="targetWeight">—</span> each</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Symbol</th><th>Company</th><th>Holder rank <button class="info-button" data-info="Rank among individual stocks by the number of distinct 13F managers reporting the position.">i</button></th><th>Value rank <button class="info-button" data-info="Rank among individual stocks by total reported market value across 13F managers.">i</button></th><th>Target weight</th></tr></thead>
+            <tbody id="buyListBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="backtest" class="tab-panel">
+      <div class="section-heading backtest-heading">
+        <div>
+          <p class="eyebrow">Historical strategy results</p>
+          <h2>Cumulative performance</h2>
+          <p class="muted">Compares the selected 13F crossover strategy with the S&amp;P 500 across the chosen dates, tax rule, and buy-list update frequency.</p>
+        </div>
+        <div class="date-controls">
+          <label>Start date<input id="startDate" type="date"></label>
+          <label>End date<input id="endDate" type="date"></label>
+          <button id="resetDates">Max History</button>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <label>Tax implications <button class="info-button" data-info="Controls when a removed lot may be sold: immediately, after 366 days, or only when it is not profitable.">i</button>
+          <select id="taxSetting">
+            <option value="strategyTax">366-day minimum hold and rebalance</option>
+            <option value="noTax">Sell and rebalance immediately</option>
+            <option value="noRealizedGains">Never sell a profitable lot</option>
+          </select>
+        </label>
+        <label>Investment frequency <button class="info-button" data-info="A contribution is made quarterly using the underweight-first allocation rule.">i</button>
+          <input id="investmentFrequency" type="hidden" value="4">
+          <div class="fixed-setting">Quarterly</div>
+        </label>
+        <label>Amount per investment <button class="info-button" data-info="Sets the starting contribution and every quarterly contribution. Percentage returns remain comparable, while dollar values in the Tax Summary scale with this amount.">i</button>
+          <div class="money-input"><span>$</span><input id="investmentAmount" type="text" value="25,000" inputmode="numeric" aria-label="Amount per investment"></div>
+        </label>
+        <label>Buy-list changes <button class="info-button" data-info="Controls how often a newly eligible 13F crossover list replaces the active recommendation list.">i</button>
+          <select id="signalFrequency">
+            <option value="4" selected>Every quarter</option>
+            <option value="2">Semiannual</option>
+            <option value="1">Yearly</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="metrics-grid backtest-metrics">
+        <article class="metric-card primary">
+          <span>Selected-period return</span>
+          <div class="comparison"><strong id="strategyReturn">—</strong><small id="spyReturn">SPY —</small></div>
+          <div class="metric-bar"><i id="returnBar"></i></div>
+        </article>
+        <article class="metric-card">
+          <span>Maximum drawdown <button class="info-button" data-info="The largest percentage decline from a prior peak during the selected period.">i</button></span>
+          <div class="comparison"><strong id="strategyDrawdown">—</strong><small id="spyDrawdown">SPY —</small></div>
+        </article>
+        <article class="metric-card">
+          <span>Annualized standard deviation <button class="info-button" data-info="Daily return variability annualized using 252 trading days. Higher values indicate more volatile returns.">i</button></span>
+          <div class="comparison"><strong id="strategyVolatility">—</strong><small id="spyVolatility">SPY —</small></div>
+        </article>
+        <article class="metric-card">
+          <span>Excess return <button class="info-button" data-info="Strategy return minus the S&P 500 return over the same selected period.">i</button></span>
+          <div class="comparison"><strong id="excessReturn">—</strong><small>Strategy minus SPY</small></div>
+        </article>
+      </div>
+
+      <div class="chart-card">
+        <div class="legend">
+          <span><i class="strategy-key"></i>13F crossover</span>
+          <span><i class="spy-key"></i>S&amp;P 500</span>
+        </div>
+        <div class="chart-stage">
+          <canvas id="performanceChart" aria-label="Cumulative strategy performance versus S&P 500"></canvas>
+          <div id="chartTooltip" class="chart-tooltip" hidden></div>
+        </div>
+        <p class="chart-hint">Click anywhere on the chart to inspect the exact date and gain or loss from the selected start date.</p>
+      </div>
+
+      <div class="buy-list-card backtest-portfolio">
+        <div class="card-heading">
+          <div><p class="eyebrow">As-held portfolio</p><h2 id="historyTitle">Holdings</h2></div>
+          <div class="history-card-controls">
+            <span id="historyPositionCount" class="muted"></span>
+            <label class="history-date">Portfolio date<input id="holdingsDate" type="date"></label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Symbol</th><th>Portfolio weight</th></tr></thead>
+            <tbody id="holdingsHistoryBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="quarter-card">
+        <div class="card-heading">
+          <div><p class="eyebrow">Quarter by quarter</p><h2>Performance history</h2></div>
+          <span id="quarterCount" class="muted"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Quarter</th><th>Strategy</th><th>S&amp;P 500</th><th>Excess</th><th>Standard deviation <button class="info-button" data-info="Annualized daily return variability within the quarter, shown as Strategy versus S&P 500.">i</button></th><th>Maximum drawdown <button class="info-button" data-info="Largest peak-to-trough decline within the quarter, shown as Strategy versus S&P 500.">i</button></th></tr></thead>
+            <tbody id="quarterTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="holdings" class="tab-panel">
+      <div class="section-heading holdings-heading">
+        <div>
+          <p class="eyebrow">Strategy versus buy-and-hold</p>
+          <h2>Tax Summary</h2>
+          <p class="muted">Compares the selected strategy with an S&amp;P 500 buy-and-hold portfolio using the same dates, starting amount, and quarterly contributions.</p>
+        </div>
+        <div class="date-controls">
+          <label>Start date<input id="holdingsStartDate" type="date"></label>
+          <label>End date<input id="holdingsEndDate" type="date"></label>
+        </div>
+      </div>
+
+      <div class="tax-control-panel">
+        <label>Tax implication
+          <select id="taxSummarySetting">
+            <option value="strategyTax">366-day minimum hold and rebalance</option>
+            <option value="noTax">Sell and rebalance immediately</option>
+            <option value="noRealizedGains">Never sell a profitable lot</option>
+          </select>
+        </label>
+        <label>Short-term tax rate<div class="rate-input"><input id="shortTermTaxRate" type="number" min="0" max="100" step="0.1" value="37"><span>%</span></div></label>
+        <label>Long-term tax rate<div class="rate-input"><input id="longTermTaxRate" type="number" min="0" max="100" step="0.1" value="20"><span>%</span></div></label>
+      </div>
+
+      <div class="tax-comparison-grid">
+        <article><span>Total return after tax and liquidation <button class="info-button" data-info="Ending value after all calculated tax divided by total contributed capital, minus one.">i</button></span><strong id="taxStrategyTotalReturn">—</strong><small id="taxSpyTotalReturn">S&amp;P 500 —</small></article>
+        <article><span>Total calculated tax through liquidation</span><strong id="taxEstimatedPaid">—</strong><small id="taxSpyEstimatedPaid">S&amp;P 500 —</small></article>
+        <article><span>Unrealized gains before liquidation <button class="info-button" data-info="Gains still embedded in each portfolio immediately before both portfolios are sold on the selected End Date. Lower embedded gains are treated as a tax benefit.">i</button></span><strong id="taxUnrealizedStrategy">—</strong><small id="taxUnrealizedSpy">S&amp;P 500 —</small></article>
+        <article><span>Net realized gain or loss before liquidation</span><strong id="taxRealizedStrategy">—</strong><small>S&amp;P 500 buy-and-hold +0.0%</small></article>
+      </div>
+
+      <div class="tax-detail-grid">
+        <section class="tax-profile-card">
+          <p class="eyebrow">Tax profile</p>
+          <h3>From contributions to after-tax value</h3>
+          <div class="tax-profile-column-headings">
+            <span></span><strong>13F strategy</strong><strong>S&amp;P 500</strong>
+          </div>
+          <div class="tax-capital-base">
+            <span>Contributed to each portfolio</span>
+            <strong id="taxContributedCapital">—</strong>
+            <strong id="taxSpyContributedCapital">—</strong>
+          </div>
+          <div class="tax-yearly-inline">
+            <div class="card-heading">
+              <div>
+                <p class="eyebrow">Annual tax-lot summary</p>
+                <h3>Realized and unrealized gains or losses by year</h3>
+                <p class="muted">Dollar amounts reflect the selected investment amount, dates, and tax strategy. Unrealized amounts are measured at each year-end, or at the selected End Date for the final year.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Year</th>
+                  <th>Strategy net realized</th>
+                  <th>Strategy net unrealized</th>
+                  <th>S&amp;P 500 net realized</th>
+                  <th>S&amp;P 500 net unrealized</th>
+                </tr></thead>
+                <tbody id="taxYearlyBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tax-outcome">
+            <p>After-tax outcome</p>
+            <div class="tax-outcome-grid">
+              <article>
+                <span>Strategy</span>
+                <strong id="taxStrategyEndingValue">—</strong>
+                <small id="taxAfterTaxReturn">—</small>
+              </article>
+              <article>
+                <span>S&amp;P 500</span>
+                <strong id="taxSpyEndingValue">—</strong>
+                <small id="taxSpyReturn">—</small>
+              </article>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="summary" class="tab-panel active">
+      <div class="overview-hero">
+        <div class="overview-hero-copy">
+          <p class="eyebrow">Overview</p>
+          <h1>13F Crossover Strategy</h1>
+          <p>The strategy evaluates individual stocks reported by institutional investment managers in quarterly 13F filings. For each quarter, it ranks the 25 stocks held by the greatest number of managers and the 25 stocks with the greatest aggregate reported value, then selects up to ten qualifying overlaps using their combined ranks. Each signal becomes investable 50 calendar days after quarter-end. Quarterly contributions and permitted sale proceeds are directed to the most underweight eligible positions so the active portfolio moves toward equal weight without adding to positions that are already above target.</p>
+          <div class="overview-coverage" aria-label="13F dataset coverage">
+            <div><strong id="coveragePositionRecords">—</strong><span>individual 13F position records evaluated</span></div>
+            <div><strong id="coverageUniqueSymbols">—</strong><span>unique stock symbols reviewed</span></div>
+          </div>
+        </div>
+        <aside class="overview-rules" aria-label="Strategy rules at a glance">
+          <p class="eyebrow">At a glance</p>
+          <dl>
+            <div><dt>Signal timing</dt><dd>Quarter-end + 50 days</dd></div>
+            <div><dt>Portfolio</dt><dd>Up to 10 equal-target positions</dd></div>
+            <div><dt>Investment</dt><dd>$25,000 quarterly default</dd></div>
+            <div><dt>Tax-aware option</dt><dd>366-day minimum hold</dd></div>
+          </dl>
+        </aside>
+      </div>
+
+      <div class="overview-section-heading">
+        <div><p class="eyebrow">Measured against the market</p><h2>Performance snapshots</h2></div>
+        <p>Snapshot basis: quarterly contributions, quarterly buy-list updates, and immediate sale and rebalance when the eligible list changes.</p>
+      </div>
+      <div class="summary-periods">
+        <article>
+          <span>Since 2005</span>
+          <div class="summary-comparison"><div><small>Strategy</small><strong id="summary2000Strategy">—</strong></div><div><small>S&amp;P 500</small><strong id="summary2000Spy">—</strong></div></div>
+          <div class="summary-stats">
+            <div><small>Excess return</small><b id="summary2000Excess">—</b><em>Strategy − S&amp;P 500</em></div>
+            <div><small>Standard deviation</small><b id="summary2000StdDev">—</b><em id="summary2000SpyStdDev">SPY —</em></div>
+            <div><small>Maximum drawdown</small><b id="summary2000Drawdown">—</b><em id="summary2000SpyDrawdown">SPY —</em></div>
+          </div>
+        </article>
+        <article>
+          <span>Since 2010</span>
+          <div class="summary-comparison"><div><small>Strategy</small><strong id="summary2010Strategy">—</strong></div><div><small>S&amp;P 500</small><strong id="summary2010Spy">—</strong></div></div>
+          <div class="summary-stats">
+            <div><small>Excess return</small><b id="summary2010Excess">—</b><em>Strategy − S&amp;P 500</em></div>
+            <div><small>Standard deviation</small><b id="summary2010StdDev">—</b><em id="summary2010SpyStdDev">SPY —</em></div>
+            <div><small>Maximum drawdown</small><b id="summary2010Drawdown">—</b><em id="summary2010SpyDrawdown">SPY —</em></div>
+          </div>
+        </article>
+        <article>
+          <span>Since 2020</span>
+          <div class="summary-comparison"><div><small>Strategy</small><strong id="summary2020Strategy">—</strong></div><div><small>S&amp;P 500</small><strong id="summary2020Spy">—</strong></div></div>
+          <div class="summary-stats">
+            <div><small>Excess return</small><b id="summary2020Excess">—</b><em>Strategy − S&amp;P 500</em></div>
+            <div><small>Standard deviation</small><b id="summary2020StdDev">—</b><em id="summary2020SpyStdDev">SPY —</em></div>
+            <div><small>Maximum drawdown</small><b id="summary2020Drawdown">—</b><em id="summary2020SpyDrawdown">SPY —</em></div>
+          </div>
+        </article>
+        <article>
+          <span>Year to date</span>
+          <div class="summary-comparison"><div><small>Strategy</small><strong id="summaryYtdStrategy">—</strong></div><div><small>S&amp;P 500</small><strong id="summaryYtdSpy">—</strong></div></div>
+          <div class="summary-stats">
+            <div><small>Excess return</small><b id="summaryYtdExcess">—</b><em>Strategy − S&amp;P 500</em></div>
+            <div><small>Standard deviation</small><b id="summaryYtdStdDev">—</b><em id="summaryYtdSpyStdDev">SPY —</em></div>
+            <div><small>Maximum drawdown</small><b id="summaryYtdDrawdown">—</b><em id="summaryYtdSpyDrawdown">SPY —</em></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="overview-method">
+        <section class="overview-process">
+          <p class="eyebrow">How the signal is built</p>
+          <h2>From every filing to ten positions</h2>
+          <div class="process-steps">
+            <article><span>01</span><div><h3>Rank ownership</h3><p>Find the 25 individual stocks held by the greatest number of reporting managers.</p></div></article>
+            <article><span>02</span><div><h3>Rank committed value</h3><p>Find the 25 individual stocks with the greatest aggregate value reported across managers.</p></div></article>
+            <article><span>03</span><div><h3>Select the crossover</h3><p>Choose up to ten qualifying overlaps by combined rank and make the list tradable 50 days after quarter-end.</p></div></article>
+          </div>
+        </section>
+        <aside class="overview-allocation">
+          <p class="eyebrow">Portfolio rules</p>
+          <h2>Tax strategy</h2>
+          <p>Quarterly contributions and permitted sale proceeds go to the most underweight current-list positions. Existing overweight positions receive no new cash until the other active names catch up.</p>
+          <div class="policy-callout">
+            <strong>366-day rebalance</strong>
+            <p>Lots remain locked for 366 days. Once eligible, removed holdings are sold and current positions above their equal-weight target are trimmed, with proceeds redirected to underweight names.</p>
+          </div>
+          <p class="overview-note">Results use time-weighted percentage returns. Adjusted prices include splits and dividends; the benchmark is SPY total-return history.</p>
+        </aside>
+      </div>
+    </section>
+
+    <div id="dataWarning" class="warning" hidden></div>
+  </main>
+  <footer>
+    <span>13F Crossover Strategy</span>
+    <span>Research dashboard · Not investment advice</span>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
