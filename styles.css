@@ -70,7 +70,13 @@ h2 { margin: 0; font-family: Georgia, serif; font-size: clamp(28px, 4vw, 42px); 
 .metric-card .negative { color: var(--tan); }
 .buy-list-card, .quarter-card, .chart-card { border: 1px solid var(--line); background: var(--card); padding: 30px; }
 .buy-list-history { margin-top: 18px; }
-.list-periods { display: grid; gap: 4px; min-width: 210px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.history-search { display: grid; gap: 6px; width: min(220px, 100%); color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+.history-search input { width: 100%; height: 38px; background: var(--white); }
+.history-table-scroll { max-height: 520px; overflow: auto; border: 1px solid var(--line); }
+.history-table-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--card); box-shadow: 0 1px 0 var(--line); }
+.list-periods { display: grid; gap: 7px; min-width: 210px; font-size: 11px; color: var(--muted); }
+.list-period { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 7px; padding: 7px 9px; border: 1px solid rgba(64,88,107,.16); border-radius: 4px; background: rgba(64,88,107,.04); white-space: nowrap; }
+.list-period i { color: var(--tan); font-style: normal; font-weight: 800; }
 .weight-pill { border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; color: var(--muted); font-size: 12px; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -86,7 +92,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .date-controls label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .07em; }
 input, .date-controls button { height: 38px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 0 11px; font: inherit; font-size: 12px; }
 .date-controls button { background: var(--tan); border-color: var(--tan); color: var(--cream); cursor: pointer; }
-.quick-ranges { display: flex; gap: 8px; margin: -2px 0 18px; }
+.quick-ranges { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .quick-ranges button { min-width: 42px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--slate); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
 .quick-ranges button:hover { border-color: var(--blue); color: var(--blue); }
 .quick-ranges button.active { background: var(--blue); border-color: var(--blue); color: var(--cream); }
@@ -99,6 +105,7 @@ input, .date-controls button { height: 38px; border: 1px solid var(--line); back
 select { width: 100%; height: 42px; border: 1px solid var(--line); background: var(--white); color: var(--ink); padding: 0 12px; font: inherit; font-size: 13px; text-transform: none; letter-spacing: normal; }
 select:focus, input:focus, button:focus-visible { outline: 3px solid rgba(197,139,94,.45); outline-offset: 2px; }
 .chart-card { margin-bottom: 18px; }
+.chart-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 12px; }
 .legend { display: flex; gap: 22px; font-size: 12px; color: var(--muted); }
 .legend i { width: 20px; height: 3px; display: inline-block; margin-right: 7px; vertical-align: middle; }
 .strategy-key { background: var(--slate); }
@@ -282,6 +289,8 @@ footer { min-height: 90px; padding: 0 clamp(24px, 5vw, 76px); border-top: 1px so
   .section-heading, .card-heading { align-items: flex-start; flex-direction: column; }
   .history-card-controls { width: 100%; align-items: flex-start; flex-direction: column; gap: 10px; }
   .buy-list-card, .quarter-card, .chart-card { padding: 18px; }
+  .chart-toolbar { align-items: flex-start; flex-direction: column; }
+  .quick-ranges { justify-content: flex-start; }
   .chart-summary { gap: 18px; flex-wrap: wrap; }
   #performanceChart { height: 300px; }
   footer { padding: 24px 18px; flex-direction: column; align-items: flex-start; gap: 8px; }

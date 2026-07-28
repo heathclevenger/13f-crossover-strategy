@@ -135,7 +135,13 @@ function renderBuyListHistory() {
     });
   });
 
-  const rows = [...history.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  state.buyListHistoryRows = [...history.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  renderBuyListHistoryRows();
+}
+
+function renderBuyListHistoryRows() {
+  const query = $("buyListHistorySearch").value.trim().toUpperCase();
+  const rows = (state.buyListHistoryRows || []).filter((row) => row.symbol.includes(query));
   $("buyListHistoryBody").innerHTML = rows.map((row) => `
     <tr>
       <td class="ticker">${row.symbol}</td>
@@ -145,7 +151,7 @@ function renderBuyListHistory() {
       <td>${row.current ? "X" : displayDate(row.removed)}</td>
       <td>${row.timesAdded}</td>
       <td><div class="list-periods">${row.periods.map((period) =>
-        `<span>${displayDate(period.start)} – ${period.end ? displayDate(period.end) : "X"}</span>`
+        `<span class="list-period"><span>${displayDate(period.start)}</span><i>→</i><span>${period.end ? displayDate(period.end) : "X"}</span></span>`
       ).join("")}</div></td>
     </tr>`).join("");
 }
@@ -157,6 +163,7 @@ function renderCurrent() {
   $("buyListYear").innerHTML = years.map((year) => `<option value="${year}">${year}</option>`).join("");
   $("buyListYear").addEventListener("change", populateQuarterOptions);
   $("buyListQuarter").addEventListener("change", renderSelectedBuyList);
+  $("buyListHistorySearch").addEventListener("input", renderBuyListHistoryRows);
   populateQuarterOptions();
   renderBuyListHistory();
 }
