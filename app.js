@@ -88,6 +88,68 @@ function populateQuarterOptions() {
   renderSelectedBuyList();
 }
 
+function renderBuyListHistory() {
+  const lists = [...state.data.buyLists]
+    .filter((list) => list.year >= 2000)
+    .sort((a, b) => a.effectiveDate.localeCompare(b.effectiveDate));
+  const history = new Map();
+  const millisecondsPerWeek = 7 * 24 * 60 * 60 * 1000;
+
+  lists.forEach((list, index) => {
+    const previousList = lists[index - 1];
+    const nextList = lists[index + 1];
+    const periodEnd = nextList?.effectiveDate || state.data.metadata.asOf;
+    const weeks = Math.max(
+      0,
+      (new Date(`${periodEnd}T00:00:00Z`) - new Date(`${list.effectiveDate}T00:00:00Z`)) / millisecondsPerWeek
+    );
+    const previousSymbols = new Set(previousList?.positions.map((position) => position.symbol) || []);
+    const nextSymbols = new Set(nextList?.positions.map((position) => position.symbol) || []);
+
+    list.positions.forEach((position) => {
+      const record = history.get(position.symbol) || {
+        symbol: position.symbol,
+        issuer: position.issuer,
+        firstAdded: list.effectiveDate,
+        removed: null,
+        weeks: 0,
+        current: false,
+        timesAdded: 0,
+        openStart: null,
+        periods: [],
+      };
+      record.issuer = position.issuer || record.issuer;
+      if (!previousSymbols.has(position.symbol)) {
+        record.timesAdded += 1;
+        record.openStart = list.effectiveDate;
+      }
+      record.weeks += weeks;
+      if (nextList && !nextSymbols.has(position.symbol)) {
+        record.removed = nextList.effectiveDate;
+        record.periods.push({ start: record.openStart, end: nextList.effectiveDate });
+        record.openStart = null;
+      }
+      if (!nextList) record.periods.push({ start: record.openStart, end: null });
+      record.current = !nextList;
+      history.set(position.symbol, record);
+    });
+  });
+
+  const rows = [...history.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  $("buyListHistoryBody").innerHTML = rows.map((row) => `
+    <tr>
+      <td class="ticker">${row.symbol}</td>
+      <td>${row.issuer}</td>
+      <td>${Math.round(row.weeks).toLocaleString()}</td>
+      <td>${displayDate(row.firstAdded)}</td>
+      <td>${row.current ? "X" : displayDate(row.removed)}</td>
+      <td>${row.timesAdded}</td>
+      <td><div class="list-periods">${row.periods.map((period) =>
+        `<span>${displayDate(period.start)} – ${period.end ? displayDate(period.end) : "X"}</span>`
+      ).join("")}</div></td>
+    </tr>`).join("");
+}
+
 function renderCurrent() {
   const { metadata, buyLists } = state.data;
   $("asOfLabel").textContent = `Data through ${metadata.asOf}`;
@@ -96,6 +158,7 @@ function renderCurrent() {
   $("buyListYear").addEventListener("change", populateQuarterOptions);
   $("buyListQuarter").addEventListener("change", renderSelectedBuyList);
   populateQuarterOptions();
+  renderBuyListHistory();
 }
 
 function normalizedRows(rows) {
@@ -201,6 +264,34 @@ function updateBacktest() {
     <td class="${metricClass(q.spy)}">${pct(q.spy)}</td><td class="${metricClass(q.strategy-q.spy)}">${pct(q.strategy-q.spy)}</td>
     <td><div class="metric-pair"><span>Strategy ${pct(q.standardDeviation)}</span><small>S&amp;P ${pct(q.spyStandardDeviation)}</small></div></td>
     <td><div class="metric-pair"><span class="${metricClass(q.maximumDrawdown)}">Strategy ${pct(q.maximumDrawdown)}</span><small class="${metricClass(q.spyMaximumDrawdown)}">S&amp;P ${pct(q.spyMaximumDrawdown)}</small></div></td></tr>`).join("");
+}
+
+function quickRangeStart(range, endDate) {
+  const end = new Date(`${endDate}T00:00:00Z`);
+  const start = new Date(end);
+  if (range === "1m") start.setUTCMonth(start.getUTCMonth() - 1);
+  if (range === "6m") start.setUTCMonth(start.getUTCMonth() - 6);
+  if (range === "ytd") return `${end.getUTCFullYear()}-01-01`;
+  if (range === "1y") start.setUTCFullYear(start.getUTCFullYear() - 1);
+  if (range === "5y") start.setUTCFullYear(start.getUTCFullYear() - 5);
+  if (range === "10y") start.setUTCFullYear(start.getUTCFullYear() - 10);
+  return start.toISOString().slice(0, 10);
+}
+
+function setQuickRange(range) {
+  const end = state.activeDaily.at(-1).date;
+  const earliest = state.activeDaily[0].date;
+  const requestedStart = quickRangeStart(range, end);
+  $("startDate").value = requestedStart < earliest ? earliest : requestedStart;
+  $("endDate").value = end;
+  document.querySelectorAll(".quick-ranges button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.range === range);
+  });
+  updateBacktestRange();
+}
+
+function clearQuickRange() {
+  document.querySelectorAll(".quick-ranges button").forEach((button) => button.classList.remove("active"));
 }
 
 function summaryPeriod(rows, prefix) {
@@ -693,8 +784,11 @@ async function init() {
     $("startDate").max = $("endDate").max = state.activeDaily.at(-1).date;
     $("startDate").value = metadata.defaultStartDate || state.activeDaily[0].date;
     $("endDate").value = state.activeDaily.at(-1).date;
-    $("startDate").addEventListener("change", updateBacktestRange);
-    $("endDate").addEventListener("change", updateBacktestRange);
+    $("startDate").addEventListener("change", () => { clearQuickRange(); updateBacktestRange(); });
+    $("endDate").addEventListener("change", () => { clearQuickRange(); updateBacktestRange(); });
+    document.querySelectorAll(".quick-ranges button").forEach((button) => {
+      button.addEventListener("click", () => setQuickRange(button.dataset.range));
+    });
     ["taxSetting", "investmentFrequency", "signalFrequency"].forEach((id) => $(id).addEventListener("change", updateScenario));
     $("taxSummarySetting").addEventListener("change", () => {
       $("taxSetting").value = $("taxSummarySetting").value;
@@ -709,6 +803,7 @@ async function init() {
     $("holdingsStartDate").addEventListener("change", updateHoldingsRange);
     $("holdingsEndDate").addEventListener("change", updateHoldingsRange);
     $("resetDates").addEventListener("click", () => {
+      clearQuickRange();
       $("startDate").value = state.activeDaily[0].date > "2005-01-01" ? state.activeDaily[0].date : "2005-01-01";
       $("endDate").value = state.activeDaily.at(-1).date;
       updateBacktestRange();

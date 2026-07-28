@@ -74,6 +74,22 @@
           </table>
         </div>
       </div>
+
+      <div class="buy-list-card buy-list-history">
+        <div class="card-heading">
+          <div>
+            <p class="eyebrow">Top 10 archive</p>
+            <h2>Buy List History</h2>
+            <p class="muted">Every stock selected since 2000, with cumulative time on the list and its most recent removal date.</p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Symbol</th><th>Company</th><th>Weeks held</th><th>First added</th><th>Removed</th><th>Times added</th><th>List periods</th></tr></thead>
+            <tbody id="buyListHistoryBody"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <section id="backtest" class="tab-panel">
@@ -88,6 +104,15 @@
           <label>End date<input id="endDate" type="date"></label>
           <button id="resetDates">Max History</button>
         </div>
+      </div>
+
+      <div class="quick-ranges" aria-label="Quick backtest date ranges">
+        <button type="button" data-range="1m">1M</button>
+        <button type="button" data-range="6m">6M</button>
+        <button type="button" data-range="ytd">YTD</button>
+        <button type="button" data-range="1y">1Y</button>
+        <button type="button" data-range="5y">5Y</button>
+        <button type="button" data-range="10y">10Y</button>
       </div>
 
       <div class="settings-card">
@@ -169,7 +194,7 @@
           <div><p class="eyebrow">Quarter by quarter</p><h2>Performance history</h2></div>
           <span id="quarterCount" class="muted"></span>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap quarter-table-scroll">
           <table>
             <thead><tr><th>Quarter</th><th>Strategy</th><th>S&amp;P 500</th><th>Excess</th><th>Standard deviation <button class="info-button" data-info="Annualized daily return variability within the quarter, shown as Strategy versus S&P 500.">i</button></th><th>Maximum drawdown <button class="info-button" data-info="Largest peak-to-trough decline within the quarter, shown as Strategy versus S&P 500.">i</button></th></tr></thead>
             <tbody id="quarterTableBody"></tbody>

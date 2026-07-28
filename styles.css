@@ -69,6 +69,8 @@ h2 { margin: 0; font-family: Georgia, serif; font-size: clamp(28px, 4vw, 42px); 
 .metric-card .positive { color: var(--cream); }
 .metric-card .negative { color: var(--tan); }
 .buy-list-card, .quarter-card, .chart-card { border: 1px solid var(--line); background: var(--card); padding: 30px; }
+.buy-list-history { margin-top: 18px; }
+.list-periods { display: grid; gap: 4px; min-width: 210px; font-size: 11px; color: var(--muted); white-space: nowrap; }
 .weight-pill { border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; color: var(--muted); font-size: 12px; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -84,6 +86,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .date-controls label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .07em; }
 input, .date-controls button { height: 38px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 0 11px; font: inherit; font-size: 12px; }
 .date-controls button { background: var(--tan); border-color: var(--tan); color: var(--cream); cursor: pointer; }
+.quick-ranges { display: flex; gap: 8px; margin: -2px 0 18px; }
+.quick-ranges button { min-width: 42px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--slate); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+.quick-ranges button:hover { border-color: var(--blue); color: var(--blue); }
+.quick-ranges button.active { background: var(--blue); border-color: var(--blue); color: var(--cream); }
 .settings-card { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; padding: 18px; border: 1px solid var(--line); background: var(--card); }
 .settings-card label { display: grid; gap: 8px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
 .money-input { display: flex; align-items: center; height: 42px; border: 1px solid var(--line); background: var(--white); }
@@ -108,6 +114,8 @@ select:focus, input:focus, button:focus-visible { outline: 3px solid rgba(197,13
 .chart-tooltip strong { display: block; margin-bottom: 3px; }
 .chart-hint { margin: 8px 0 0; color: var(--muted); font-size: 11px; }
 .quarter-card { margin-top: 18px; }
+.quarter-table-scroll { max-height: 480px; overflow: auto; border: 1px solid var(--line); }
+.quarter-table-scroll thead th { position: sticky; top: 0; z-index: 2; background: var(--card); box-shadow: 0 1px 0 var(--line); }
 .backtest-portfolio { margin-top: 18px; }
 .holdings-heading { align-items: flex-end; }
 .holdings-heading .muted { max-width: 700px; margin: 8px 0 0; line-height: 1.5; }
