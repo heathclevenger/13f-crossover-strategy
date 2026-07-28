@@ -337,7 +337,7 @@ function allocateUnderweight(symbols, lots, cash, tradingDate) {
   });
 }
 
-function exactTaxSimulation(startDate, endDate, taxMode, updatesPerYear, amount, shortRate, longRate) {
+function exactTaxSimulation(startDate, endDate, taxMode, investmentsPerYear, updatesPerYear, amount, shortRate, longRate) {
   const start = firstMarketDateOnOrAfter(startDate);
   const end = lastMarketDateOnOrBefore(endDate);
   if (!start || !end || start > end) return null;
@@ -353,10 +353,29 @@ function exactTaxSimulation(startDate, endDate, taxMode, updatesPerYear, amount,
   const events = new Map();
   allSignals.filter((signal) => signal.tradingDate > start).forEach((signal) => {
     const event = events.get(signal.tradingDate) || {};
-    event.contribution = true;
+    event.review = true;
+    if (investmentsPerYear === 4) event.contribution = true;
     if (updateEligible(signal)) event.signal = signal;
     events.set(signal.tradingDate, event);
   });
+  if (investmentsPerYear === 52) {
+    const weekKey = (value) => {
+      const day = new Date(`${value}T00:00:00Z`);
+      day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+      return day.toISOString().slice(0, 10);
+    };
+    const startingWeek = weekKey(start);
+    const seenWeeks = new Set([startingWeek]);
+    (state.data.marketPrices?.SPY || []).forEach(([tradingDate]) => {
+      if (tradingDate <= start || tradingDate > end) return;
+      const week = weekKey(tradingDate);
+      if (seenWeeks.has(week)) return;
+      seenWeeks.add(week);
+      const event = events.get(tradingDate) || {};
+      event.contribution = true;
+      events.set(tradingDate, event);
+    });
+  }
   const lots = [];
   let activeSymbols = startingSignal.positions.map((row) => row.symbol);
   let basis = amount;
@@ -406,8 +425,8 @@ function exactTaxSimulation(startDate, endDate, taxMode, updatesPerYear, amount,
       nextSnapshotYear += 1;
     }
     let proceeds = 0;
-    if (event.signal) {
-      activeSymbols = event.signal.positions.map((row) => row.symbol);
+    if (event.review) {
+      if (event.signal) activeSymbols = event.signal.positions.map((row) => row.symbol);
       const current = new Set(activeSymbols);
       const portfolioValue = lots.reduce((sum, lot) => {
         const price = marketPrice(lot.symbol, tradingDate);
@@ -557,6 +576,7 @@ function renderHoldingsHistory() {
     $("holdingsStartDate").value,
     $("holdingsEndDate").value,
     $("taxSetting").value,
+    Number($("investmentFrequency").value),
     Number($("signalFrequency").value),
     amount,
     shortRate,

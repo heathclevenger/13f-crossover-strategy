@@ -98,14 +98,17 @@
             <option value="noRealizedGains">Never sell a profitable lot</option>
           </select>
         </label>
-        <label>Investment frequency <button class="info-button" data-info="A contribution is made quarterly using the underweight-first allocation rule.">i</button>
-          <input id="investmentFrequency" type="hidden" value="4">
-          <div class="fixed-setting">Quarterly</div>
+        <label>Investment frequency <button class="info-button" data-info="Controls only when new money is contributed. Sales and portfolio reviews still occur only on eligible buy-list update dates.">i</button>
+          <select id="investmentFrequency">
+            <option value="0">Once</option>
+            <option value="4" selected>Quarterly</option>
+            <option value="52">Weekly</option>
+          </select>
         </label>
         <label>Amount per investment <button class="info-button" data-info="Sets the starting contribution and every quarterly contribution. Percentage returns remain comparable, while dollar values in the Tax Summary scale with this amount.">i</button>
           <div class="money-input"><span>$</span><input id="investmentAmount" type="text" value="25,000" inputmode="numeric" aria-label="Amount per investment"></div>
         </label>
-        <label>Buy-list changes <button class="info-button" data-info="Controls how often a newly eligible 13F crossover list replaces the active recommendation list.">i</button>
+        <label>Buy-list changes <button class="info-button" data-info="Controls how often a newly eligible 13F crossover list replaces the active list. Portfolio reviews still occur on every quarterly signal date.">i</button>
           <select id="signalFrequency">
             <option value="4" selected>Every quarter</option>
             <option value="2">Semiannual</option>
@@ -181,7 +184,7 @@
         <div>
           <p class="eyebrow">Strategy versus buy-and-hold</p>
           <h2>Tax Summary</h2>
-          <p class="muted">Compares the selected strategy with an S&amp;P 500 buy-and-hold portfolio using the same dates, starting amount, and quarterly contributions.</p>
+          <p class="muted">Compares the selected strategy with an S&amp;P 500 buy-and-hold portfolio using the same dates, starting amount, and selected contribution schedule.</p>
         </div>
         <div class="date-controls">
           <label>Start date<input id="holdingsStartDate" type="date"></label>
@@ -265,7 +268,7 @@
         <div class="overview-hero-copy">
           <p class="eyebrow">Overview</p>
           <h1>13F Crossover Strategy</h1>
-          <p>The strategy evaluates individual stocks reported by institutional investment managers in quarterly 13F filings. For each quarter, it ranks the 25 stocks held by the greatest number of managers and the 25 stocks with the greatest aggregate reported value, then selects up to ten qualifying overlaps using their combined ranks. Each signal becomes investable 50 calendar days after quarter-end. Quarterly contributions and permitted sale proceeds are directed to the most underweight eligible positions so the active portfolio moves toward equal weight without adding to positions that are already above target.</p>
+          <p>The strategy evaluates individual stocks reported by institutional investment managers in quarterly 13F filings. For each quarter, it ranks the 25 stocks held by the greatest number of managers and the 25 stocks with the greatest aggregate reported value, then selects up to ten qualifying overlaps using their combined ranks. Each signal becomes investable 50 calendar days after quarter-end. New contributions and permitted sale proceeds are directed to the most underweight eligible positions so the active portfolio moves toward equal weight without adding to positions that are already above target.</p>
           <div class="overview-coverage" aria-label="13F dataset coverage">
             <div><strong id="coveragePositionRecords">—</strong><span>individual 13F position records evaluated</span></div>
             <div><strong id="coverageUniqueSymbols">—</strong><span>unique stock symbols reviewed</span></div>
