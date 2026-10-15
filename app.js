@@ -57,10 +57,19 @@ function nextSignalDate(latestQuarter) {
   return quarterEnd.toISOString().slice(0, 10);
 }
 
+function scheduledSignalDate(year, quarter) {
+  const quarterEnd = new Date(Date.UTC(year, quarter * 3, 0));
+  quarterEnd.setUTCDate(quarterEnd.getUTCDate() + 50);
+  return quarterEnd.toISOString().slice(0, 10);
+}
+
 function renderBuyList(list) {
   const quarterLabel = `${list.year} Q${list.quarter}`;
   $("lastListUpdate").textContent = displayDate(list.effectiveDate);
-  $("lastListQuarter").textContent = `${quarterLabel} · 50-day filing delay`;
+  const timingNote = list.effectiveDate === scheduledSignalDate(list.year, list.quarter)
+    ? "50-day filing delay"
+    : "SEC data release date";
+  $("lastListQuarter").textContent = `${quarterLabel} · ${timingNote}`;
   $("nextListUpdate").textContent = displayDate(nextSignalDate(quarterLabel));
   $("positionCount").textContent = list.positions.length;
   $("targetWeight").textContent = `${(100 / list.positions.length).toFixed(1)}%`;
@@ -174,6 +183,12 @@ function normalizedRows(rows) {
   return rows.map((row) => ({ ...row, strategyNorm: row.strategy / s0 * 100, spyNorm: row.spy / p0 * 100 }));
 }
 
+function selectedStartMarketDate(value) {
+  const prices = state.data.marketPrices?.SPY || [];
+  if (prices.some(([date]) => date === value)) return value;
+  return lastMarketDateOnOrBefore(value) || firstMarketDateOnOrAfter(value);
+}
+
 function drawChart(rows) {
   const canvas = $("performanceChart");
   const ratio = window.devicePixelRatio || 1;
@@ -253,8 +268,17 @@ function updateBacktest() {
   state.chartSelection = null;
   $("chartTooltip").hidden = true;
   const start = $("startDate").value, end = $("endDate").value;
-  const raw = state.activeDaily.filter((row) => row.date >= start && row.date <= end);
-  const rows = normalizedRows(raw); state.filtered = rows;
+  const exact = exactTaxSimulation(
+    start,
+    end,
+    $("taxSetting").value,
+    Number($("investmentFrequency").value),
+    Number($("signalFrequency").value),
+    Math.max(investmentScale() * 100000, 1),
+    0,
+    0
+  );
+  const rows = normalizedRows(exact?.daily || []); state.filtered = rows;
   const sr = totalReturn(rows, "strategyNorm"), pr = totalReturn(rows, "spyNorm");
   setMetric("strategyReturn", sr);
   $("spyReturn").textContent = `SPY ${pct(pr)}`;
@@ -438,7 +462,7 @@ function allocateUnderweight(symbols, lots, cash, tradingDate) {
 }
 
 function exactTaxSimulation(startDate, endDate, taxMode, investmentsPerYear, updatesPerYear, amount, shortRate, longRate) {
-  const start = firstMarketDateOnOrAfter(startDate);
+  const start = selectedStartMarketDate(startDate);
   const end = lastMarketDateOnOrBefore(endDate);
   if (!start || !end || start > end) return null;
   const allSignals = state.data.buyLists.map((signal) => ({
@@ -483,6 +507,11 @@ function exactTaxSimulation(startDate, endDate, taxMode, investmentsPerYear, upd
   const annualRealized = {};
   const yearly = [];
   allocateUnderweight(activeSymbols, lots, amount, start);
+  const snapshotHoldings = () => Object.entries(lots.reduce((totals, lot) => {
+    totals[lot.symbol] = (totals[lot.symbol] || 0) + lot.units;
+    return totals;
+  }, {})).map(([symbol, units]) => ({ symbol, units }));
+  const snapshots = [{ date: start, contribution: 0, holdings: snapshotHoldings() }];
 
   const recordSale = (lot, units, price, tradingDate) => {
     const gain = units * (price - lot.purchasePrice);
@@ -568,6 +597,11 @@ function exactTaxSimulation(startDate, endDate, taxMode, investmentsPerYear, upd
       basis += amount;
     }
     allocateUnderweight(activeSymbols, lots, contribution + proceeds, tradingDate);
+    snapshots.push({
+      date: tradingDate,
+      contribution,
+      holdings: snapshotHoldings(),
+    });
   });
   while (nextSnapshotYear <= Number(end.slice(0, 4))) {
     captureYear(nextSnapshotYear);
@@ -575,12 +609,14 @@ function exactTaxSimulation(startDate, endDate, taxMode, investmentsPerYear, upd
   }
 
   let endingValue = 0, unrealizedShort = 0, unrealizedLong = 0;
+  const holdingValues = {};
   lots.forEach((lot) => {
     const price = marketPrice(lot.symbol, end);
     if (price == null) return;
     const value = lot.units * price;
     const gain = value - lot.units * lot.purchasePrice;
     endingValue += value;
+    holdingValues[lot.symbol] = (holdingValues[lot.symbol] || 0) + value;
     if (daysBetween(lot.purchased, end) >= 366) unrealizedLong += gain;
     else unrealizedShort += gain;
   });
@@ -616,10 +652,42 @@ function exactTaxSimulation(startDate, endDate, taxMode, investmentsPerYear, upd
       .filter((lot) => lot.purchased <= row.date)
       .reduce((sum, lot) => sum + lot.units * (endPrice - lot.purchasePrice), 0);
   });
+  let snapshotIndex = 0;
+  let priorValue = null;
+  let strategyIndex = 100;
+  const startSpyPrice = marketPrice("SPY", start);
+  const daily = (state.data.marketPrices?.SPY || [])
+    .filter(([tradingDate]) => tradingDate >= start && tradingDate <= end)
+    .map(([tradingDate, spyPrice], index) => {
+      while (snapshotIndex + 1 < snapshots.length
+        && snapshots[snapshotIndex + 1].date <= tradingDate) snapshotIndex += 1;
+      const snapshot = snapshots[snapshotIndex];
+      const portfolioValue = snapshot.holdings.reduce((sum, holding) => {
+        const price = marketPrice(holding.symbol, tradingDate);
+        return sum + (price == null ? 0 : holding.units * price);
+      }, 0);
+      const externalFlow = snapshot.date === tradingDate ? snapshot.contribution : 0;
+      if (priorValue != null && priorValue > 0) {
+        strategyIndex *= (portfolioValue - externalFlow) / priorValue;
+      }
+      priorValue = portfolioValue;
+      return {
+        date: index === 0 && start < startDate ? startDate : tradingDate,
+        strategy: strategyIndex,
+        spy: startSpyPrice > 0 ? spyPrice / startSpyPrice * 100 : 100,
+      };
+    });
+  const holdings = Object.entries(holdingValues)
+    .map(([symbol, value]) => ({
+      symbol,
+      weight: endingValue > 0 ? value / endingValue * 100 : 0,
+    }))
+    .filter((row) => row.weight > 0.0001)
+    .sort((a, b) => b.weight - a.weight || a.symbol.localeCompare(b.symbol));
   return {
     basis, endingValue, realizedShort, realizedLong, unrealizedShort, unrealizedLong,
     realizedTax, totalTax, liquidationTax: totalTax - realizedTax,
-    spyEndingValue, spyShort, spyLong, spyTax, yearly,
+    spyEndingValue, spyShort, spyLong, spyTax, yearly, daily, holdings,
   };
 }
 
@@ -665,9 +733,21 @@ function renderHoldingsHistory() {
   if (!history.length) return;
   configureHoldingsDates();
   const portfolioSnapshot = history.filter((row) => row.date <= $("holdingsDate").value).at(-1) || history[0];
-  $("historyTitle").textContent = `Portfolio on ${displayDate(portfolioSnapshot.date)}`;
-  $("historyPositionCount").textContent = `${portfolioSnapshot.holdings.length} positions`;
-  $("holdingsHistoryBody").innerHTML = portfolioSnapshot.holdings.map((row, index) => `
+  const selectedPortfolio = exactTaxSimulation(
+    $("startDate").value,
+    $("holdingsDate").value,
+    $("taxSetting").value,
+    Number($("investmentFrequency").value),
+    Number($("signalFrequency").value),
+    Math.max(investmentScale() * 100000, 1),
+    0,
+    0
+  );
+  const positions = selectedPortfolio?.holdings || portfolioSnapshot.holdings;
+  const portfolioDate = lastMarketDateOnOrBefore($("holdingsDate").value) || portfolioSnapshot.date;
+  $("historyTitle").textContent = `Portfolio on ${displayDate(portfolioDate)}`;
+  $("historyPositionCount").textContent = `${positions.length} positions`;
+  $("holdingsHistoryBody").innerHTML = positions.map((row, index) => `
     <tr><td>${index + 1}</td><td class="ticker">${row.symbol}</td><td>${row.weight.toFixed(1)}%</td></tr>`).join("");
   const shortRate = Math.min(100, Math.max(0, Number($("shortTermTaxRate").value) || 0)) / 100;
   const longRate = Math.min(100, Math.max(0, Number($("longTermTaxRate").value) || 0)) / 100;
