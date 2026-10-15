@@ -24,7 +24,6 @@
       <button class="tab active" data-tab="summary">Overview</button>
       <button class="tab" data-tab="current">Buy List</button>
       <button class="tab" data-tab="backtest">Backtest</button>
-      <button class="tab" data-tab="holdings">Tax Summary</button>
     </nav>
 
     <section id="current" class="tab-panel">
@@ -111,7 +110,7 @@
         <label>Tax implications <button class="info-button" data-info="Controls when a removed lot may be sold: immediately, after 366 days, or only when it is not profitable.">i</button>
           <select id="taxSetting">
             <option value="strategyTax">366-day minimum hold and rebalance</option>
-            <option value="noTax">Sell and rebalance immediately</option>
+            <option value="noTax" selected>Sell and rebalance immediately</option>
             <option value="noRealizedGains">Never sell a profitable lot</option>
           </select>
         </label>
@@ -122,7 +121,7 @@
             <option value="52">Weekly</option>
           </select>
         </label>
-        <label>Amount per investment <button class="info-button" data-info="Sets the starting contribution and every quarterly contribution. Percentage returns remain comparable, while dollar values in the Tax Summary scale with this amount.">i</button>
+        <label>Amount per investment <button class="info-button" data-info="Sets the starting contribution and each later contribution. Percentage returns remain comparable across investment amounts.">i</button>
           <div class="money-input"><span>$</span><input id="investmentAmount" type="text" value="25,000" inputmode="numeric" aria-label="Amount per investment"></div>
         </label>
         <label>Buy-list changes <button class="info-button" data-info="Controls how often a newly eligible 13F crossover list replaces the active list. Portfolio reviews still occur on every quarterly signal date.">i</button>
@@ -202,90 +201,6 @@
             <tbody id="quarterTableBody"></tbody>
           </table>
         </div>
-      </div>
-    </section>
-
-    <section id="holdings" class="tab-panel">
-      <div class="section-heading holdings-heading">
-        <div>
-          <p class="eyebrow">Strategy versus buy-and-hold</p>
-          <h2>Tax Summary</h2>
-          <p class="muted">Compares the selected strategy with an S&amp;P 500 buy-and-hold portfolio using the same dates, starting amount, and selected contribution schedule.</p>
-        </div>
-        <div class="date-controls">
-          <label>Start date<input id="holdingsStartDate" type="date"></label>
-          <label>End date<input id="holdingsEndDate" type="date"></label>
-        </div>
-      </div>
-
-      <div class="tax-control-panel">
-        <label>Tax implication
-          <select id="taxSummarySetting">
-            <option value="strategyTax">366-day minimum hold and rebalance</option>
-            <option value="noTax">Sell and rebalance immediately</option>
-            <option value="noRealizedGains">Never sell a profitable lot</option>
-          </select>
-        </label>
-        <label>Short-term tax rate<div class="rate-input"><input id="shortTermTaxRate" type="number" min="0" max="100" step="0.1" value="37"><span>%</span></div></label>
-        <label>Long-term tax rate<div class="rate-input"><input id="longTermTaxRate" type="number" min="0" max="100" step="0.1" value="20"><span>%</span></div></label>
-      </div>
-
-      <div class="tax-comparison-grid">
-        <article><span>Total return after tax and liquidation <button class="info-button" data-info="Ending value after all calculated tax divided by total contributed capital, minus one.">i</button></span><strong id="taxStrategyTotalReturn">—</strong><small id="taxSpyTotalReturn">S&amp;P 500 —</small></article>
-        <article><span>Total calculated tax through liquidation</span><strong id="taxEstimatedPaid">—</strong><small id="taxSpyEstimatedPaid">S&amp;P 500 —</small></article>
-        <article><span>Unrealized gains before liquidation <button class="info-button" data-info="Gains still embedded in each portfolio immediately before both portfolios are sold on the selected End Date. Lower embedded gains are treated as a tax benefit.">i</button></span><strong id="taxUnrealizedStrategy">—</strong><small id="taxUnrealizedSpy">S&amp;P 500 —</small></article>
-        <article><span>Net realized gain or loss before liquidation</span><strong id="taxRealizedStrategy">—</strong><small>S&amp;P 500 buy-and-hold +0.0%</small></article>
-      </div>
-
-      <div class="tax-detail-grid">
-        <section class="tax-profile-card">
-          <p class="eyebrow">Tax profile</p>
-          <h3>From contributions to after-tax value</h3>
-          <div class="tax-profile-column-headings">
-            <span></span><strong>13F strategy</strong><strong>S&amp;P 500</strong>
-          </div>
-          <div class="tax-capital-base">
-            <span>Contributed to each portfolio</span>
-            <strong id="taxContributedCapital">—</strong>
-            <strong id="taxSpyContributedCapital">—</strong>
-          </div>
-          <div class="tax-yearly-inline">
-            <div class="card-heading">
-              <div>
-                <p class="eyebrow">Annual tax-lot summary</p>
-                <h3>Realized and unrealized gains or losses by year</h3>
-                <p class="muted">Dollar amounts reflect the selected investment amount, dates, and tax strategy. Unrealized amounts are measured at each year-end, or at the selected End Date for the final year.</p>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr>
-                  <th>Year</th>
-                  <th>Strategy net realized</th>
-                  <th>Strategy net unrealized</th>
-                  <th>S&amp;P 500 net realized</th>
-                  <th>S&amp;P 500 net unrealized</th>
-                </tr></thead>
-                <tbody id="taxYearlyBody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="tax-outcome">
-            <p>After-tax outcome</p>
-            <div class="tax-outcome-grid">
-              <article>
-                <span>Strategy</span>
-                <strong id="taxStrategyEndingValue">—</strong>
-                <small id="taxAfterTaxReturn">—</small>
-              </article>
-              <article>
-                <span>S&amp;P 500</span>
-                <strong id="taxSpyEndingValue">—</strong>
-                <small id="taxSpyReturn">—</small>
-              </article>
-            </div>
-          </div>
-        </section>
       </div>
     </section>
 

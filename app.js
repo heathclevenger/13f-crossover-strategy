@@ -14,7 +14,7 @@ document.querySelectorAll(".tab").forEach((button) => {
     button.classList.add("active");
     $(button.dataset.tab).classList.add("active");
     if (button.dataset.tab === "backtest") requestAnimationFrame(updateBacktest);
-    if (button.dataset.tab === "holdings" || button.dataset.tab === "backtest") renderHoldingsHistory();
+    if (button.dataset.tab === "backtest") renderHoldingsHistory();
   });
 });
 
@@ -345,15 +345,25 @@ function summaryPeriod(rows, prefix) {
 }
 
 function renderSummary() {
-  const daily = state.data.scenarios?.noTax_4_4 || state.data.daily;
-  const latestDate = new Date(`${daily.at(-1).date}T00:00:00Z`);
+  const endDate = state.data.metadata.asOf;
+  const latestDate = new Date(`${endDate}T00:00:00Z`);
   const oneYearStart = new Date(latestDate);
   oneYearStart.setUTCFullYear(oneYearStart.getUTCFullYear() - 1);
   const oneYearStartDate = oneYearStart.toISOString().slice(0, 10);
-  summaryPeriod(daily.filter((row) => row.date >= "2005-01-01"), "summary2000");
-  summaryPeriod(daily.filter((row) => row.date >= "2010-01-01"), "summary2010");
-  summaryPeriod(daily.filter((row) => row.date >= "2020-01-01"), "summary2020");
-  summaryPeriod(daily.filter((row) => row.date >= oneYearStartDate), "summary1Year");
+  const snapshotRows = (startDate) => exactTaxSimulation(
+    startDate,
+    endDate,
+    "noTax",
+    4,
+    4,
+    100000,
+    0,
+    0
+  )?.daily || [];
+  summaryPeriod(snapshotRows("2005-01-01"), "summary2000");
+  summaryPeriod(snapshotRows("2010-01-01"), "summary2010");
+  summaryPeriod(snapshotRows("2020-01-01"), "summary2020");
+  summaryPeriod(snapshotRows(oneYearStartDate), "summary1Year");
 }
 
 function scenarioKey() {
@@ -707,24 +717,9 @@ function activePortfolioHistory() {
 function configureHoldingsDates() {
   const history = activePortfolioHistory();
   if (!history.length) return;
-  const first = history[0].date;
-  const last = history.at(-1).date;
-  const start = $("holdingsStartDate");
-  const end = $("holdingsEndDate");
-  start.min = end.min = first;
-  start.max = end.max = last;
-  if (!start.value || start.value < first || start.value > last) {
-    const desired = $("startDate").value || first;
-    start.value = desired < first ? first : desired > last ? last : desired;
-  }
-  if (!end.value || end.value < first || end.value > last) {
-    const desired = $("endDate").value || last;
-    end.value = desired < first ? first : desired > last ? last : desired;
-  }
-  if (start.value > end.value) start.value = end.value;
   const input = $("holdingsDate");
-  input.min = start.value;
-  input.max = end.value;
+  input.min = $("startDate").value > history[0].date ? $("startDate").value : history[0].date;
+  input.max = $("endDate").value < history.at(-1).date ? $("endDate").value : history.at(-1).date;
   if (!input.value || input.value < input.min || input.value > input.max) input.value = input.max;
 }
 
@@ -749,80 +744,15 @@ function renderHoldingsHistory() {
   $("historyPositionCount").textContent = `${positions.length} positions`;
   $("holdingsHistoryBody").innerHTML = positions.map((row, index) => `
     <tr><td>${index + 1}</td><td class="ticker">${row.symbol}</td><td>${row.weight.toFixed(1)}%</td></tr>`).join("");
-  const shortRate = Math.min(100, Math.max(0, Number($("shortTermTaxRate").value) || 0)) / 100;
-  const longRate = Math.min(100, Math.max(0, Number($("longTermTaxRate").value) || 0)) / 100;
-  const amount = investmentScale() * 100000;
-  const exact = exactTaxSimulation(
-    $("holdingsStartDate").value,
-    $("holdingsEndDate").value,
-    $("taxSetting").value,
-    Number($("investmentFrequency").value),
-    Number($("signalFrequency").value),
-    amount,
-    shortRate,
-    longRate
-  );
-  if (!exact) return;
-  const basis = Math.max(exact.basis, 1);
-  const strategyTaxPaid = exact.totalTax;
-  const strategyLiquidationValue = exact.endingValue - exact.totalTax;
-  const spyLiquidationTax = exact.spyTax;
-  const spyLiquidationValue = exact.spyEndingValue - exact.spyTax;
-  const spyUnrealizedPct = (exact.spyShort + exact.spyLong) / basis * 100;
-  const unrealizedPct = (exact.unrealizedShort + exact.unrealizedLong) / basis * 100;
-  const realizedPct = (exact.realizedShort + exact.realizedLong) / basis * 100;
-  const afterTaxReturn = (strategyLiquidationValue / basis - 1) * 100;
-  const spyAfterTaxReturn = (spyLiquidationValue / basis - 1) * 100;
-  setMetric("taxStrategyTotalReturn", afterTaxReturn);
-  $("taxSpyTotalReturn").textContent = `S&P 500 ${pct(spyAfterTaxReturn)}`;
-  $("taxStrategyEndingValue").textContent = money(strategyLiquidationValue);
-  $("taxSpyEndingValue").textContent = money(spyLiquidationValue);
-  $("taxContributedCapital").textContent = money(basis);
-  $("taxSpyContributedCapital").textContent = money(basis);
-  $("taxEstimatedPaid").textContent = money(strategyTaxPaid);
-  $("taxSpyEstimatedPaid").textContent = `S&P 500 ${money(spyLiquidationTax)}`;
-  setMetric("taxUnrealizedStrategy", unrealizedPct);
-  $("taxUnrealizedSpy").textContent = `S&P 500 ${pct(spyUnrealizedPct)}`;
-  setMetric("taxRealizedStrategy", realizedPct);
-  setMetric("taxAfterTaxReturn", afterTaxReturn);
-  setMetric("taxSpyReturn", spyAfterTaxReturn);
-
-  $("taxYearlyBody").innerHTML = exact.yearly.map((row) => `
-    <tr>
-      <td class="ticker">${row.year}</td>
-      <td class="${row.strategyRealized < 0 ? "tax-loss" : "tax-gain"}">${signedMoney(row.strategyRealized)}</td>
-      <td class="${row.strategyUnrealized < 0 ? "tax-loss" : "tax-gain"}">${signedMoney(row.strategyUnrealized)}</td>
-      <td>${signedMoney(row.spyRealized)}</td>
-      <td class="${row.spyUnrealized < 0 ? "tax-loss" : "tax-gain"}">${signedMoney(row.spyUnrealized)}</td>
-    </tr>`).join("");
-}
-
-function updateHoldingsRange() {
-  if ($("holdingsStartDate").value > $("holdingsEndDate").value) {
-    if (document.activeElement === $("holdingsStartDate")) $("holdingsEndDate").value = $("holdingsStartDate").value;
-    else $("holdingsStartDate").value = $("holdingsEndDate").value;
-  }
-  $("startDate").value = $("holdingsStartDate").value;
-  $("endDate").value = $("holdingsEndDate").value;
-  $("holdingsDate").min = $("holdingsStartDate").value;
-  $("holdingsDate").max = $("holdingsEndDate").value;
-  if ($("holdingsDate").value < $("holdingsDate").min || $("holdingsDate").value > $("holdingsDate").max) {
-    $("holdingsDate").value = $("holdingsDate").max;
-  }
-  updateBacktest();
-  renderHoldingsHistory();
 }
 
 function updateBacktestRange() {
   updateBacktest();
-  $("holdingsStartDate").value = $("startDate").value;
-  $("holdingsEndDate").value = $("endDate").value;
   configureHoldingsDates();
   renderHoldingsHistory();
 }
 
 function updateScenario() {
-  $("taxSummarySetting").value = $("taxSetting").value;
   state.activeDaily = state.data.scenarios?.[scenarioKey()] || state.data.daily;
   const first = state.activeDaily[0].date, last = state.activeDaily.at(-1).date;
   $("startDate").min = $("endDate").min = first;
@@ -866,7 +796,7 @@ async function init() {
     const integerFormat = new Intl.NumberFormat("en-US");
     $("coveragePositionRecords").textContent = integerFormat.format(metadata.coverage?.positionRecords || 0);
     $("coverageUniqueSymbols").textContent = integerFormat.format(metadata.coverage?.uniqueSymbols || 0);
-    state.activeDaily = state.data.scenarios?.strategyTax_4_4 || daily;
+    state.activeDaily = state.data.scenarios?.[scenarioKey()] || daily;
     $("startDate").min = $("endDate").min = state.activeDaily[0].date;
     $("startDate").max = $("endDate").max = state.activeDaily.at(-1).date;
     $("startDate").value = metadata.defaultStartDate || state.activeDaily[0].date;
@@ -877,18 +807,10 @@ async function init() {
       button.addEventListener("click", () => setQuickRange(button.dataset.range));
     });
     ["taxSetting", "investmentFrequency", "signalFrequency"].forEach((id) => $(id).addEventListener("change", updateScenario));
-    $("taxSummarySetting").addEventListener("change", () => {
-      $("taxSetting").value = $("taxSummarySetting").value;
-      updateScenario();
-    });
     $("investmentAmount").addEventListener("input", renderHoldingsHistory);
     $("investmentAmount").addEventListener("blur", formatInvestmentAmount);
     $("investmentAmount").addEventListener("change", formatInvestmentAmount);
     $("holdingsDate").addEventListener("change", renderHoldingsHistory);
-    $("shortTermTaxRate").addEventListener("input", renderHoldingsHistory);
-    $("longTermTaxRate").addEventListener("input", renderHoldingsHistory);
-    $("holdingsStartDate").addEventListener("change", updateHoldingsRange);
-    $("holdingsEndDate").addEventListener("change", updateHoldingsRange);
     $("resetDates").addEventListener("click", () => {
       clearQuickRange();
       $("startDate").value = state.activeDaily[0].date > "2005-01-01" ? state.activeDaily[0].date : "2005-01-01";
